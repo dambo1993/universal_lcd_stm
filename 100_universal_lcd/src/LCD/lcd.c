@@ -8,6 +8,7 @@
 #include "lcd.h"
 #include <stdlib.h>
 #include "stm32f0xx.h"
+#include "string.h"
 
 // includowanie odpowiednich sprzetowych bibliotek
 
@@ -19,36 +20,57 @@
 #include "OLED/oled.h"
 
 #elif LCD_TYPE == LCD_TYPE_UC1701
-
 #include "UC1701/lcd_uc1701.h"
+
 #endif
 
-// nasza wykorzystywana czcionka 7x5
+/**
+ * Wskaznik na funkcje odswiezajaca ekran.
+ */
+lcdb_odswiez_ekran_callback *my_lcdb_odswiez_ekran;
+
+/**
+ * Wskaznik na funkcje odswiezajaca obszar ekranu.
+ */
+lcdb_odswiez_obszar_callback *my_lcdb_odswiez_obszar;
+
+/**
+ * Tablica z wykorzystywana czcionka.
+ */
 const uint8_t ASCII[][5] = {
 #include "LCD/font.h"
 };
 
-// bufor naszego wyswietlacza
+/**
+ * Bufor wyswietlacza.
+ */
 uint8_t lcd_buff[BUFF_SIZE];
 
 
-// funkcja inicjalizujaca wyswietlacz, nalezy tu podciagnac
-// odpowiednie funkcje sprzetowe
+/**
+ * Inicjalizacja wyswietlacza.
+ */
 void lcdb_init( void )
 {
 
 #if LCD_TYPE == LCD_TYPE_ST7920
 	st_init();
 	graphic_mode();
+
+	my_lcdb_odswiez_ekran = ST7920_odswiez_ekran;
 #elif LCD_TYPE == LCD_TYPE_OLED
 	oled_init();
+	my_lcdb_odswiez_ekran = oled_odswiez;
 #elif LCD_TYPE == LCD_TYPE_UC1701
 	lcd_uc1701_init();
+	my_lcdb_odswiez_ekran = lcd_uc1701_buf_wyswietl;
 #endif
 
 }
 
-// czysci bufor w pamieci
+/**
+ * Czysci bufor w pamieci.
+ */
 void lcdb_czysc_bufor( void )
 {
 	uint16_t licznik = 0;
@@ -58,7 +80,9 @@ void lcdb_czysc_bufor( void )
 	}
 }
 
-// zapala piksel w buforze
+/**
+ * Czysci bufor w pamieci.
+ */
 void lcdb_zapal_pixel(uint16_t X, uint16_t Y,uint8_t zapal)
 {
 	if(zapal)
@@ -67,11 +91,17 @@ void lcdb_zapal_pixel(uint16_t X, uint16_t Y,uint8_t zapal)
 		lcd_buff[X + (128 *(Y / 8))] &= ~(1 << (Y%8));
 }
 
-// rysuje obrazek z tablicy do bufora
-// program microlcd ze strony http://hobby.abxyz.bplaced.net/index.php?pid=5&aid=12
-// ustawienia zapisu : horizontal
-// natomiast jesli chcemy skorzystac z pixel factory - ustawiamy vertical
-// dla wygody w tablicy dwa pierwsze bajty oznaczaja dlugosc i wysokosc w pikselach - trzeba to zawsze samemu dopisac, ale latwiej sie uzywa w programie
+
+/**
+ * rysuje obrazek z tablicy do bufora
+ * program microlcd ze strony http://hobby.abxyz.bplaced.net/index.php?pid=5&aid=12
+ * ustawienia zapisu : horizontal
+ * natomiast jesli chcemy skorzystac z pixel factory - ustawiamy vertical
+ * dla wygody w tablicy dwa pierwsze bajty oznaczaja dlugosc i wysokosc w pikselach - trzeba to zawsze samemu dopisac, ale latwiej sie uzywa w programie
+ * @param s - tablica z obrazkiem, ktora zawiera takze jego rozmiar.
+ * @param x - wspolrzedna x.
+ * @param y - wspolrzedna y.
+ */
 void lcdb_rysuj_obrazek_zmazywanie(const unsigned char s[],char  x, char y)
 {
    uint16_t i,j,k;
@@ -108,33 +138,33 @@ void lcdb_rysuj_obrazek_zmazywanie(const unsigned char s[],char  x, char y)
    }
 }
 
-// funkcja odswiezajaca caly ekran
+/**
+ * Odswieza caly ekran.
+ */
 void lcdb_odswiez_ekran()
 {
-
-#if LCD_TYPE == LCD_TYPE_ST7920
-
-	ST7920_buf_odswiez_ekran();
-
-#elif LCD_TYPE == LCD_TYPE_OLED
-
-	oled_display();
-
-#elif LCD_TYPE == LCD_TYPE_UC1701
-	lcd_uc1701_buf_wyswietl();
-#endif
-
+	my_lcdb_odswiez_ekran();
 }
 
-// funkcja, ktora odswieza tylko wybrany obszar ekranu
+/**
+ * Odswieza tylko wybrany obszar ekranu.
+ * @param x1 - wspolrzedna x pierwszego wierzcholka.
+ * @param y1 - wspolrzedna y pierwszego wierzcholka.
+ * @param x2 - wspolrzedna x drugiego wierzcholka.
+ * @param y2 - wspolrzedna x drugiego wierzcholka.
+ */
 void lcdb_odswiez_obszar(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2)
 {
-#if LCD_TYPE == LCD_TYPE_ST7920
-	ST7920_buf_odswiez_obszar( x1,  y1,  x2,  y2);
-#endif
+	my_lcdb_odswiez_obszar(x1,y1,x2,y2);
 }
 
-// funkcja piszaca znak w zadanej pozycji
+/**
+ * Funkcja piszaca znak w zadanej pozycji
+ * @param x - wspolrzedna x.
+ * @param y - wspolrzedna ya.
+ * @param c - znak do napisania.
+ * @param kolor - czy tekst ma byc czarny(1), czy bialy(0).
+ */
 void lcdb_narysuj_znak(uint16_t x, uint16_t y,char c, uint8_t kolor)
 {
 	uint8_t line;
@@ -170,7 +200,13 @@ void lcdb_narysuj_znak(uint16_t x, uint16_t y,char c, uint8_t kolor)
 	}
 }
 
-// funkcja piszaca tekst w zadanej pozycji
+/**
+ * Funkcja piszaca tekst w zadanej pozycji
+ * @param x - wspolrzedna x.
+ * @param y - wspolrzedna ya.
+ * @param wsk - wskaznik na tekst do wyswietlenia.
+ * @param kolor - czy tekst ma byc czarny(1), czy bialy(0).
+ */
 void lcdb_pisz_tekst(uint16_t x, uint16_t y, char* wsk, uint8_t kolor)
 {
 	char znak;
@@ -183,7 +219,13 @@ void lcdb_pisz_tekst(uint16_t x, uint16_t y, char* wsk, uint8_t kolor)
 	}
 }
 
-// funkcja piszaca liczbe w zadanej pozycji
+/**
+ * Funkcja piszaca liczbe w zadanej pozycji
+ * @param x - wspolrzedna x.
+ * @param y - wspolrzedna ya.
+ * @param liczba - wartosc do wyswietlenia.
+ * @param kolor - czy tekst ma byc czarny(1), czy bialy(0).
+ */
 void lcdb_pisz_liczbe(uint16_t x, uint16_t y, int16_t liczba, uint8_t kolor)
 {
 	char buff[10];
@@ -191,6 +233,154 @@ void lcdb_pisz_liczbe(uint16_t x, uint16_t y, int16_t liczba, uint8_t kolor)
 	itoa(liczba, buff, 10);
 
 	lcdb_pisz_tekst(x,y,buff,kolor);
+}
+
+
+
+/**
+ * Funkcja piszaca liczbe w zadanej pozycji, ale tylko okreslona ilosc - uzupelnia wybranym znakiem
+ * w praktyce dziala jak wyrownanie do prawej
+ * @param x - wspolrzedna x.
+ * @param y - wspolrzedna ya.
+ * @param liczba - wartosc do wyswietlenia.
+ * @param kolor - czy tekst ma byc czarny(1), czy bialy(0).
+ * @param znaki - ilosc znakow.
+ * @param wypelniacz - jakim znakiem maja byc wypelnione puste pola (np spacja lub 0).
+ */
+void lcdb_pisz_liczbe_x_znakow(uint16_t x, uint16_t y, int16_t liczba, uint8_t kolor, uint8_t znaki, uint8_t wypelniacz)
+{
+	char buff[10];
+
+	itoa(liczba, buff + 4, 10);
+
+	// sprawdzamy rozmiar tekstu
+	uint8_t rozmiar = strlen(buff + 4);
+
+	uint8_t pozycja = 4;
+	while( rozmiar < znaki )
+	{
+		buff[ pozycja - 1 ] = wypelniacz;
+		pozycja--;
+		rozmiar++;
+	}
+
+	lcdb_pisz_tekst(x,y,buff + pozycja,kolor);
+}
+
+/**
+ * Funkcja piszaca znak w zadanej pozycji o wielkosci 16px.
+ * @param x - wspolrzedna x.
+ * @param y - wspolrzedna ya.
+ * @param c - znak do napisania.
+ * @param kolor - czy tekst ma byc czarny(1), czy bialy(0).
+ */
+void lcdb_narysuj_znak_16(uint16_t x, uint16_t y,char c, uint8_t kolor)
+{
+	uint8_t line;
+	for(uint8_t i = 0; i < 6; i++)
+	{
+		if(i == 5)
+		{
+			line = 0x0;
+		}
+		else
+		{
+			line = ASCII[c - 0x20][i];
+		}
+		for(int8_t j = 0; j < 8; j++)
+		{
+			if(line & 0x01)
+			{
+				lcdb_zapal_pixel(x+(2*i),y+(2*j),kolor);
+				lcdb_zapal_pixel(x+(2*i)+1,y+(2*j),kolor);
+				lcdb_zapal_pixel(x+(2*i),y+(2*j)+1,kolor);
+				lcdb_zapal_pixel(x+(2*i)+1,y+(2*j)+1,kolor);
+			}
+			else
+			{
+				if( kolor )
+				{
+					lcdb_zapal_pixel(x+(2*i),y+(2*j),0);
+					lcdb_zapal_pixel(x+(2*i)+1,y+(2*j),0);
+					lcdb_zapal_pixel(x+(2*i),y+(2*j)+1,0);
+					lcdb_zapal_pixel(x+(2*i)+1,y+(2*j)+1,0);
+				}
+				else
+				{
+					lcdb_zapal_pixel(x+(2*i),y+(2*j),1);
+					lcdb_zapal_pixel(x+(2*i)+1,y+(2*j),1);
+					lcdb_zapal_pixel(x+(2*i),y+(2*j)+1,1);
+					lcdb_zapal_pixel(x+(2*i)+1,y+(2*j)+1,1);
+				}
+			}
+			line >>= 1;
+		}
+	}
+}
+
+/**
+ * Funkcja piszaca tekst w zadanej pozycji o wielkosci 16px.
+ * @param x - wspolrzedna x.
+ * @param y - wspolrzedna ya.
+ * @param wsk - wskaznik na tekst do wyswietlenia.
+ * @param kolor - czy tekst ma byc czarny(1), czy bialy(0).
+ */
+void lcdb_pisz_tekst_16(uint16_t x, uint16_t y, char* wsk, uint8_t kolor)
+{
+	char znak;
+	uint16_t licznik = 0;
+	while( (znak = *(wsk)) )
+	{
+		lcdb_narysuj_znak_16(x + ( licznik * 12 ),y,znak,kolor);
+		licznik++;
+		wsk++;
+	}
+}
+
+/**
+ * Funkcja piszaca liczbe w zadanej pozycji o wielkosci 16px.
+ * @param x - wspolrzedna x.
+ * @param y - wspolrzedna ya.
+ * @param liczba - wartosc do wyswietlenia.
+ * @param kolor - czy tekst ma byc czarny(1), czy bialy(0).
+ */
+void lcdb_pisz_liczbe_16(uint16_t x, uint16_t y, int16_t liczba, uint8_t kolor)
+{
+	char buff[10];
+
+	itoa(liczba, buff, 10);
+
+	lcdb_pisz_tekst_16(x,y,buff,kolor);
+}
+
+/**
+ * Funkcja piszaca liczbe w zadanej pozycji, ale tylko okreslona ilosc - uzupelnia wybranym znakiem
+ * w praktyce dziala jak wyrownanie do prawej
+ * @param x - wspolrzedna x.
+ * @param y - wspolrzedna ya.
+ * @param liczba - wartosc do wyswietlenia.
+ * @param kolor - czy tekst ma byc czarny(1), czy bialy(0).
+ * @param znaki - ilosc znakow.
+ * @param wypelniacz - jakim znakiem maja byc wypelnione puste pola (np spacja lub 0).
+ */
+void lcdb_pisz_liczbe_x_znakow_16(uint16_t x, uint16_t y, int16_t liczba, uint8_t kolor, uint8_t znaki, uint8_t wypelniacz)
+{
+	char buff[10];
+
+	itoa(liczba, buff + 4, 10);
+
+	// sprawdzamy rozmiar tekstu
+	uint8_t rozmiar = strlen(buff + 4);
+
+	uint8_t pozycja = 4;
+	while( rozmiar < znaki )
+	{
+		buff[ pozycja - 1 ] = wypelniacz;
+		pozycja--;
+		rozmiar++;
+	}
+
+	lcdb_pisz_tekst_16(x,y,buff + pozycja,kolor);
 }
 
 

@@ -54,5 +54,4 @@ void lcd_uc1701_ustaw_linie(uint8_t);
 void lcd_uc1701_buf_wyswietl(void);
 
 
-
 #endif /* LCD_UC1701_H_ */

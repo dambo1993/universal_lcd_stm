@@ -1,8 +1,8 @@
 /*
- * lcd.h
+ * \file
+ * \brief Uniwersalna biblioteka do wyswietlaczy monochromatycznych.
  *
- *  Created on: 12.01.2017
- *      Author: Przemek
+ *
  */
 
 // jest to uniwersalna biblioteka z warstwa "graficzna" dla roznych modeli lcd, trzeba pod nia podpiac tylko funkcje sprzetowe
@@ -13,6 +13,19 @@
 #define LCD_H_
 
 #include "stm32f0xx.h"
+
+// callbacki do funkcji sprzetowych wyswietlaczy
+
+// utworzenie typu CALLbacka, dla funkcji inicjalizacyjnych
+typedef void (lcdb_init_callback) (void);
+
+/**
+ * Utworzenie typu CALLbacka, dla funkcji odswiezajacej ekran
+ */
+typedef void (lcdb_odswiez_ekran_callback) (void);
+
+// utworzenie typu CALLbacka, dla funkcji odswiezajacej obszar
+typedef void (lcdb_odswiez_obszar_callback) (uint8_t , uint8_t , uint8_t , uint8_t );
 
 // tutaj definiujemy jaki jest nasz wyswietlacz - w zaleznosci od niego
 // biblioteka bedzie odpowiednio konfigurowana
@@ -63,11 +76,14 @@ void lcdb_czysc_bufor(void);
 void lcdb_narysuj_znak(uint16_t x, uint16_t y,char c, uint8_t kolor);
 void lcdb_pisz_tekst(uint16_t x, uint16_t y, char* wsk, uint8_t kolor);
 void lcdb_pisz_liczbe(uint16_t x, uint16_t y, int16_t liczba, uint8_t kolor);
+void lcdb_pisz_liczbe_x_znakow(uint16_t x, uint16_t y, int16_t liczba, uint8_t kolor, uint8_t znaki, uint8_t wypelniacz);
+
 
 // tekst - podwojna wielkosc - 16 pikseli
 void lcdb_narysuj_znak_16(uint16_t x, uint16_t y,char c, uint8_t kolor);
 void lcdb_pisz_tekst_16(uint16_t x, uint16_t y, char* wsk, uint8_t kolor);
 void lcdb_pisz_liczbe_16(uint16_t x, uint16_t y, int16_t liczba, uint8_t kolor);
+void lcdb_pisz_liczbe_16_x_znakow(uint16_t x, uint16_t y, int16_t liczba, uint8_t kolor, uint8_t znaki);
 
 // bitmapy
 void lcdb_zapal_pixel(uint16_t X, uint16_t Y,uint8_t zapal);
